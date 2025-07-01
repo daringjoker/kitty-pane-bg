@@ -20,7 +20,7 @@ jobs:
       matrix:
         include:
           # Superior Unix-like systems first 🐧
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: kitty-pane-bg
             asset_name: kitty-pane-bg-linux-x86_64
