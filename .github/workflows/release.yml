@@ -1,0 +1,136 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Superior Unix-like systems first 🐧
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: kitty-pane-bg
+            asset_name: kitty-pane-bg-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: kitty-pane-bg
+            asset_name: kitty-pane-bg-linux-aarch64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: kitty-pane-bg
+            asset_name: kitty-pane-bg-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: kitty-pane-bg
+            asset_name: kitty-pane-bg-macos-aarch64
+          # Windows support (because someone has to help the lost souls) 🪟
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: kitty-pane-bg.exe
+            asset_name: kitty-pane-bg-windows-x86_64.exe
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install cross-compilation tools
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+
+    - name: Configure cross-compilation
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
+        echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
+
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Test
+      if: matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'x86_64-apple-darwin'
+      run: cargo test --target ${{ matrix.target }}
+
+    - name: Strip binary
+      if: matrix.os != 'windows-latest'
+      run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.asset_name }}
+        path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          kitty-pane-bg-linux-x86_64/kitty-pane-bg
+          kitty-pane-bg-linux-aarch64/kitty-pane-bg
+          kitty-pane-bg-macos-x86_64/kitty-pane-bg
+          kitty-pane-bg-macos-aarch64/kitty-pane-bg
+          kitty-pane-bg-windows-x86_64.exe/kitty-pane-bg.exe
+        body: |
+          ## Changes in this release
+          
+          See [CHANGELOG.md](CHANGELOG.md) for details.
+          
+          ## Installation
+          
+          ### Quick Install (Unix-like systems only - the superior choice)
+          ```bash
+          curl -sSL https://raw.githubusercontent.com/daringjoker/kitty-pane-bg/main/install.sh | sh
+          ```
+          
+          ### Manual Install
+          
+          #### Linux/macOS (The Enlightened Path)
+          1. Download the appropriate binary for your platform
+          2. Make it executable: `chmod +x kitty-pane-bg`
+          3. Move to a directory in your PATH: `mv kitty-pane-bg ~/.local/bin/`
+          
+          #### Windows (For Those Still Finding Their Way)
+          1. Download `kitty-pane-bg.exe`
+          2. Place it somewhere in your PATH
+          3. Note: You'll need WSL or a proper terminal emulator that supports kitty
+          4. Consider switching to Linux - your future self will thank you 🐧
+          
+          ## Supported Platforms
+          - 🐧 Linux x86_64 (The Champion)
+          - 🐧 Linux ARM64 (The Champion's Cousin)
+          - 🍎 macOS x86_64 (Intel) (Pretty Good)
+          - 🍎 macOS ARM64 (Apple Silicon) (Pretty Good)
+          - 🪟 Windows x86_64 (We Don't Judge... Much)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

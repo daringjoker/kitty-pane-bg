@@ -1,0 +1,15 @@
+# Tmux Configuration Example  
+# Add these lines to your ~/.tmux.conf file
+
+# Optional: Bind keys for manual background generation
+bind-key B run-shell 'kitty-pane-bg generate --output /tmp/kitty-pane-bg.png'
+
+# Optional: Bind key to install hooks
+bind-key H run-shell 'kitty-pane-bg install-hooks'
+
+# Optional: Set background image automatically on session start
+# (Requires hooks to be installed first)
+set-hook -g session-created 'run-shell "kitty-pane-bg generate --output /tmp/kitty-pane-bg.png"'
+
+# Optional: More responsive hook for layout changes
+set-hook -g window-layout-changed 'run-shell "kitty-pane-bg generate --output /tmp/kitty-pane-bg.png"'

@@ -1,0 +1,88 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo lock file (uncomment if this is a library)
+# Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Generated files and temporary artifacts
+*.tmp
+*.temp
+*.log
+*.out
+
+# Project-specific temporary files
+/tmp/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
+
+# Cache and state files
+.cache/
+*.cache
+.state
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Test artifacts
+test-output/
+*.test
+
+# Documentation build
+/docs/book/
+
+# Local development files
+.env
+.env.local
+.env.*.local
+
+# Flamegraph outputs
+flamegraph.svg
+perf.data*
+
+# Coverage reports
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# Benchmark results
+target/criterion/
+
+# Release binaries (keep debug builds in target/)
+kitty-pane-bg
+kitty-pane-bg.exe
+
+# Installation and setup scripts are kept in version control
+# install.sh
+# test-install.sh
+
+# Lock files for temporary image generation
+*.generation.lock
+
+# Color cache files (these should persist)
+# Uncomment the line below if you want to ignore cache files
+# *.cache.json

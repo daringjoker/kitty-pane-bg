@@ -1,0 +1,17 @@
+# Kitty Configuration Example
+# Add these lines to your kitty.conf file
+
+# Enable remote control for the kitty-pane-bg program
+allow_remote_control yes
+
+# Optional: Set up a socket for better performance
+listen_on unix:/tmp/kitty
+
+# Optional: Set background opacity to see the generated image better
+background_opacity 0.8
+
+# Optional: Keybinding to manually generate background
+map ctrl+shift+b launch --type=overlay kitty-pane-bg generate
+
+# Optional: Keybinding to install hooks
+map ctrl+shift+h launch --type=overlay kitty-pane-bg install-hooks
