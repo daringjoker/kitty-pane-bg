@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/bin/sh
+
+# kitty-pane-bg Installation Script
+# Usage: curl -sSL https://raw.githubusercontent.com/daringjoker/kitty-pane-bg/main/install.sh | shin/bash
 
 # kitty-pane-bg Installation Script
 # Usage: curl -sSL https://raw.githubusercontent.com/USERNAME/kitty-pane-bg/main/install.sh | sh
@@ -42,8 +45,8 @@ command_exists() {
 
 # Detect OS and architecture
 detect_platform() {
-    local os
-    local arch
+    os=""
+    arch=""
     
     case "$(uname -s)" in
         Linux*)     os="linux" ;;
@@ -67,14 +70,18 @@ check_requirements() {
     log_info "Checking system requirements..."
     
     # Check for required commands
-    local missing_deps=()
+    missing_deps=""
     
     if ! command_exists curl; then
-        missing_deps+=("curl")
+        missing_deps="curl"
     fi
     
     if ! command_exists tmux; then
-        missing_deps+=("tmux")
+        if [ -z "$missing_deps" ]; then
+            missing_deps="tmux"
+        else
+            missing_deps="$missing_deps tmux"
+        fi
     fi
     
     if ! command_exists kitty; then
@@ -82,12 +89,12 @@ check_requirements() {
         log_info "Install kitty from: https://sw.kovidgoyal.net/kitty/binary/"
     fi
     
-    if [ ${#missing_deps[@]} -ne 0 ]; then
-        log_error "Missing required dependencies: ${missing_deps[*]}"
+    if [ -n "$missing_deps" ]; then
+        log_error "Missing required dependencies: $missing_deps"
         log_info "Please install them using your system package manager:"
-        log_info "  Ubuntu/Debian: sudo apt install ${missing_deps[*]}"
-        log_info "  RHEL/CentOS/Fedora: sudo dnf install ${missing_deps[*]}"
-        log_info "  macOS: brew install ${missing_deps[*]}"
+        log_info "  Ubuntu/Debian: sudo apt install $missing_deps"
+        log_info "  RHEL/CentOS/Fedora: sudo dnf install $missing_deps"
+        log_info "  macOS: brew install $missing_deps"
         exit 1
     fi
     
@@ -121,23 +128,24 @@ install_rust() {
 
 # Try to download pre-built binary
 download_binary() {
-    local platform
     platform=$(detect_platform)
     
     log_info "Attempting to download pre-built binary for $platform..."
     
     # Determine the correct binary name and extension
-    local binary_name="${BINARY_NAME}-${platform}"
-    local download_name="${BINARY_NAME}"
+    binary_name="${BINARY_NAME}-${platform}"
+    download_name="${BINARY_NAME}"
     
     # Add .exe extension for Windows
-    if [[ "$platform" == *"windows"* ]]; then
-        binary_name="${binary_name}.exe"
-        download_name="${download_name}.exe"
-    fi
+    case "$platform" in
+        *windows*)
+            binary_name="${binary_name}.exe"
+            download_name="${download_name}.exe"
+            ;;
+    esac
     
     # Try to get the latest release
-    local latest_url="${REPO_URL}/releases/latest/download/${binary_name}"
+    latest_url="${REPO_URL}/releases/latest/download/${binary_name}"
     
     if curl -sSLf "$latest_url" -o "${TEMP_DIR}/${download_name}" 2>/dev/null; then
         chmod +x "${TEMP_DIR}/${download_name}"
@@ -163,7 +171,7 @@ build_from_source() {
         git clone "$REPO_URL.git" "$TEMP_DIR"
     else
         # Fallback to downloading archive
-        local archive_url="${REPO_URL}/archive/refs/heads/main.tar.gz"
+        archive_url="${REPO_URL}/archive/refs/heads/main.tar.gz"
         curl -sSL "$archive_url" | tar -xz -C "$TEMP_DIR" --strip-components=1
     fi
     
@@ -173,14 +181,16 @@ build_from_source() {
     cargo build --release
     
     # Copy the binary with correct name/extension
-    local source_binary="target/release/${BINARY_NAME}"
-    local dest_binary="${BINARY_NAME}"
+    source_binary="target/release/${BINARY_NAME}"
+    dest_binary="${BINARY_NAME}"
     
     # Add .exe extension for Windows
-    if [[ "$(uname -s)" == CYGWIN* ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
-        source_binary="${source_binary}.exe"
-        dest_binary="${dest_binary}.exe"
-    fi
+    case "$(uname -s)" in
+        CYGWIN*|MINGW*|MSYS*)
+            source_binary="${source_binary}.exe"
+            dest_binary="${dest_binary}.exe"
+            ;;
+    esac
     
     cp "$source_binary" "${TEMP_DIR}/${dest_binary}"
     log_success "Built from source successfully"
@@ -189,14 +199,16 @@ build_from_source() {
 # Install the binary
 install_binary() {
     # Determine the correct binary name
-    local source_binary="${BINARY_NAME}"
-    local dest_binary="${BINARY_NAME}"
+    source_binary="${BINARY_NAME}"
+    dest_binary="${BINARY_NAME}"
     
     # Add .exe extension for Windows if needed
-    if [[ "$(uname -s)" == CYGWIN* ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
-        source_binary="${source_binary}.exe"
-        # But keep dest_binary without .exe for Unix-like PATH
-    fi
+    case "$(uname -s)" in
+        CYGWIN*|MINGW*|MSYS*)
+            source_binary="${source_binary}.exe"
+            # But keep dest_binary without .exe for Unix-like PATH
+            ;;
+    esac
     
     log_info "Installing ${dest_binary} to ${INSTALL_DIR}..."
     
@@ -213,39 +225,44 @@ install_binary() {
 # Update PATH if needed
 update_path() {
     # Check if install directory is in PATH
-    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-        log_info "Adding ${INSTALL_DIR} to PATH..."
-        
-        # Determine shell config file
-        local shell_config=""
-        case "$SHELL" in
-            */bash)
-                shell_config="$HOME/.bashrc"
-                [ -f "$HOME/.bash_profile" ] && shell_config="$HOME/.bash_profile"
-                ;;
-            */zsh)
-                shell_config="$HOME/.zshrc"
-                ;;
-            */fish)
-                shell_config="$HOME/.config/fish/config.fish"
-                ;;
-            *)
-                shell_config="$HOME/.profile"
-                ;;
-        esac
-        
-        # Add to PATH
-        if [ -f "$shell_config" ]; then
-            echo "" >> "$shell_config"
-            echo "# Added by kitty-pane-bg installer" >> "$shell_config"
-            echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> "$shell_config"
-            log_success "Added to PATH in $shell_config"
-            log_info "Please run 'source $shell_config' or restart your shell"
-        else
-            log_warning "Could not automatically update PATH"
-            log_info "Please manually add $INSTALL_DIR to your PATH"
-        fi
-    fi
+    case ":$PATH:" in
+        *":$INSTALL_DIR:"*)
+            # Already in PATH
+            ;;
+        *)
+            log_info "Adding ${INSTALL_DIR} to PATH..."
+            
+            # Determine shell config file
+            shell_config=""
+            case "$SHELL" in
+                */bash)
+                    shell_config="$HOME/.bashrc"
+                    [ -f "$HOME/.bash_profile" ] && shell_config="$HOME/.bash_profile"
+                    ;;
+                */zsh)
+                    shell_config="$HOME/.zshrc"
+                    ;;
+                */fish)
+                    shell_config="$HOME/.config/fish/config.fish"
+                    ;;
+                *)
+                    shell_config="$HOME/.profile"
+                    ;;
+            esac
+            
+            # Add to PATH
+            if [ -f "$shell_config" ]; then
+                echo "" >> "$shell_config"
+                echo "# Added by kitty-pane-bg installer" >> "$shell_config"
+                echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> "$shell_config"
+                log_success "Added to PATH in $shell_config"
+                log_info "Please run 'source $shell_config' or restart your shell"
+            else
+                log_warning "Could not automatically update PATH"
+                log_info "Please manually add $INSTALL_DIR to your PATH"
+            fi
+            ;;
+    esac
 }
 
 # Setup kitty configuration

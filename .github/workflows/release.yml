@@ -118,15 +118,20 @@ jobs:
           ### Manual Install
           
           #### Linux/macOS (The Enlightened Path)
-          1. Download the appropriate binary for your platform
-          2. Make it executable: `chmod +x kitty-pane-bg`
-          3. Move to a directory in your PATH: `mv kitty-pane-bg ~/.local/bin/`
+          1. Download the appropriate binary for your platform:
+             - `kitty-pane-bg-linux-x86_64` for Linux x86_64
+             - `kitty-pane-bg-linux-aarch64` for Linux ARM64
+             - `kitty-pane-bg-macos-x86_64` for macOS Intel
+             - `kitty-pane-bg-macos-aarch64` for macOS Apple Silicon
+          2. Make it executable: `chmod +x kitty-pane-bg-*`
+          3. Rename and move: `mv kitty-pane-bg-* ~/.local/bin/kitty-pane-bg`
           
           #### Windows (For Those Still Finding Their Way)
-          1. Download `kitty-pane-bg.exe`
-          2. Place it somewhere in your PATH
-          3. Note: You'll need WSL or a proper terminal emulator that supports kitty
-          4. Consider switching to Linux - your future self will thank you 🐧
+          1. Download `kitty-pane-bg-windows-x86_64.exe`
+          2. Rename to `kitty-pane-bg.exe`
+          3. Place it somewhere in your PATH
+          4. Note: You'll need WSL or a proper terminal emulator that supports kitty
+          5. Consider switching to Linux - your future self will thank you 🐧
           
           ## Supported Platforms
           - 🐧 Linux x86_64 (The Champion)
