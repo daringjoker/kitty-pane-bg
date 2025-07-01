@@ -68,10 +68,6 @@ jobs:
       if: matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'x86_64-apple-darwin'
       run: cargo test --target ${{ matrix.target }}
 
-    - name: Strip binary
-      if: matrix.os != 'windows-latest'
-      run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
