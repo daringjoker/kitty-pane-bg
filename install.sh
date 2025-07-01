@@ -43,6 +43,72 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Check glibc version and binary compatibility
+check_glibc_compatibility() {
+    binary_path="$1"
+    
+    # Only check on Linux systems
+    case "$(uname -s)" in
+        Linux*) ;;
+        *) return 0 ;;  # Not Linux, skip check
+    esac
+    
+    log_info "Checking binary compatibility..."
+    
+    # Try to run the binary with --help to test compatibility
+    if "$binary_path" --help >/dev/null 2>&1; then
+        log_success "Binary is compatible with system"
+        return 0
+    fi
+    
+    # Check if it's a glibc version issue
+    if ldd "$binary_path" 2>&1 | grep -q "version.*not found"; then
+        log_warning "glibc version mismatch detected"
+        
+        # Get system glibc version
+        system_glibc=""
+        if command_exists ldd; then
+            system_glibc=$(ldd --version 2>&1 | head -n1 | grep -o '[0-9]\+\.[0-9]\+' | head -n1)
+        fi
+        
+        # Get required glibc version from binary
+        required_glibc=""
+        if command_exists objdump; then
+            required_glibc=$(objdump -T "$binary_path" 2>/dev/null | grep "GLIBC_" | sed 's/.*GLIBC_//' | sort -V | tail -n1)
+        fi
+        
+        log_warning "System glibc: ${system_glibc:-unknown}"
+        log_warning "Required glibc: ${required_glibc:-unknown}"
+        log_warning "Pre-built binary is not compatible with your system's glibc version"
+        log_info "Will build from source instead..."
+        
+        return 1
+    fi
+    
+    # Other compatibility issue
+    log_warning "Binary compatibility issue detected (not glibc related)"
+    log_info "Will build from source instead..."
+    return 1
+}
+
+# Check if we can upgrade glibc (for advanced users)
+suggest_glibc_upgrade() {
+    log_info "Alternative solutions:"
+    echo "  1. Build from source (recommended - will be done automatically)"
+    echo "  2. Use a newer Linux distribution with updated glibc"
+    echo "  3. Use static binary (if available in future releases)"
+    echo ""
+    echo "Common glibc versions by distribution:"
+    echo "  • Ubuntu 18.04: glibc 2.27"
+    echo "  • Ubuntu 20.04: glibc 2.31"
+    echo "  • Ubuntu 22.04: glibc 2.35"
+    echo "  • CentOS 7: glibc 2.17"
+    echo "  • CentOS 8: glibc 2.28"
+    echo "  • Debian 10: glibc 2.28"
+    echo "  • Debian 11: glibc 2.31"
+    echo ""
+}
+
 # Detect OS and architecture
 detect_platform() {
     os=""
@@ -150,7 +216,15 @@ download_binary() {
     if curl -sSLf "$latest_url" -o "${TEMP_DIR}/${download_name}" 2>/dev/null; then
         chmod +x "${TEMP_DIR}/${download_name}"
         log_success "Downloaded pre-built binary"
-        return 0
+        
+        # Check glibc compatibility on Linux
+        if check_glibc_compatibility "${TEMP_DIR}/${download_name}"; then
+            return 0
+        else
+            log_warning "Downloaded binary is not compatible with this system"
+            suggest_glibc_upgrade
+            return 1
+        fi
     else
         log_warning "Pre-built binary not available for $platform"
         return 1
@@ -304,6 +378,7 @@ post_install_check() {
     log_info "Running post-installation checks..."
     
     # Test binary
+    log_info "Running ${INSTALL_DIR}/${BINARY_NAME} > /dev/null 2>&1"
     if ! "${INSTALL_DIR}/${BINARY_NAME}" --help >/dev/null 2>&1; then
         log_error "Binary installation failed - ${BINARY_NAME} not working"
     fi
