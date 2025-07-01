@@ -126,11 +126,21 @@ download_binary() {
     
     log_info "Attempting to download pre-built binary for $platform..."
     
-    # Try to get the latest release
-    local latest_url="${REPO_URL}/releases/latest/download/${BINARY_NAME}-${platform}"
+    # Determine the correct binary name and extension
+    local binary_name="${BINARY_NAME}-${platform}"
+    local download_name="${BINARY_NAME}"
     
-    if curl -sSLf "$latest_url" -o "${TEMP_DIR}/${BINARY_NAME}" 2>/dev/null; then
-        chmod +x "${TEMP_DIR}/${BINARY_NAME}"
+    # Add .exe extension for Windows
+    if [[ "$platform" == *"windows"* ]]; then
+        binary_name="${binary_name}.exe"
+        download_name="${download_name}.exe"
+    fi
+    
+    # Try to get the latest release
+    local latest_url="${REPO_URL}/releases/latest/download/${binary_name}"
+    
+    if curl -sSLf "$latest_url" -o "${TEMP_DIR}/${download_name}" 2>/dev/null; then
+        chmod +x "${TEMP_DIR}/${download_name}"
         log_success "Downloaded pre-built binary"
         return 0
     else
@@ -162,23 +172,42 @@ build_from_source() {
     log_info "Building with cargo (this may take a few minutes)..."
     cargo build --release
     
-    # Copy the binary
-    cp "target/release/${BINARY_NAME}" "${TEMP_DIR}/${BINARY_NAME}"
+    # Copy the binary with correct name/extension
+    local source_binary="target/release/${BINARY_NAME}"
+    local dest_binary="${BINARY_NAME}"
+    
+    # Add .exe extension for Windows
+    if [[ "$(uname -s)" == CYGWIN* ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+        source_binary="${source_binary}.exe"
+        dest_binary="${dest_binary}.exe"
+    fi
+    
+    cp "$source_binary" "${TEMP_DIR}/${dest_binary}"
     log_success "Built from source successfully"
 }
 
 # Install the binary
 install_binary() {
-    log_info "Installing ${BINARY_NAME} to ${INSTALL_DIR}..."
+    # Determine the correct binary name
+    local source_binary="${BINARY_NAME}"
+    local dest_binary="${BINARY_NAME}"
+    
+    # Add .exe extension for Windows if needed
+    if [[ "$(uname -s)" == CYGWIN* ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+        source_binary="${source_binary}.exe"
+        # But keep dest_binary without .exe for Unix-like PATH
+    fi
+    
+    log_info "Installing ${dest_binary} to ${INSTALL_DIR}..."
     
     # Create install directory
     mkdir -p "$INSTALL_DIR"
     
     # Copy binary
-    cp "${TEMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+    cp "${TEMP_DIR}/${source_binary}" "${INSTALL_DIR}/${dest_binary}"
+    chmod +x "${INSTALL_DIR}/${dest_binary}"
     
-    log_success "Installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"
+    log_success "Installed ${dest_binary} to ${INSTALL_DIR}/${dest_binary}"
 }
 
 # Update PATH if needed

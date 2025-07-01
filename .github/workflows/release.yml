@@ -69,11 +69,20 @@ jobs:
       if: matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'x86_64-apple-darwin'
       run: cargo test --target ${{ matrix.target }}
 
+    - name: Strip binary
+      if: matrix.os != 'windows-latest'
+      run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+    - name: Rename binary for release
+      run: |
+        mkdir -p dist
+        cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset_name }}
-        path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        path: dist/${{ matrix.asset_name }}
 
   release:
     name: Create Release
@@ -93,11 +102,11 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          kitty-pane-bg-linux-x86_64/kitty-pane-bg
-          kitty-pane-bg-linux-aarch64/kitty-pane-bg
-          kitty-pane-bg-macos-x86_64/kitty-pane-bg
-          kitty-pane-bg-macos-aarch64/kitty-pane-bg
-          kitty-pane-bg-windows-x86_64.exe/kitty-pane-bg.exe
+          kitty-pane-bg-linux-x86_64/kitty-pane-bg-linux-x86_64
+          kitty-pane-bg-linux-aarch64/kitty-pane-bg-linux-aarch64
+          kitty-pane-bg-macos-x86_64/kitty-pane-bg-macos-x86_64
+          kitty-pane-bg-macos-aarch64/kitty-pane-bg-macos-aarch64
+          kitty-pane-bg-windows-x86_64.exe/kitty-pane-bg-windows-x86_64.exe
         body: |
           ## Changes in this release
           
