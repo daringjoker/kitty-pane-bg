@@ -24,9 +24,9 @@ jobs:
             target: x86_64-unknown-linux-musl
             artifact_name: kitty-pane-bg
             asset_name: kitty-pane-bg-linux-x86_64
-          # Windows built normally (MSVC)
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
+          # Windows cross-compiled from Linux (GNU toolchain)
+          - os: ubuntu-latest
+            target: x86_64-pc-windows-gnu
             artifact_name: kitty-pane-bg.exe
             asset_name: kitty-pane-bg-windows-x86_64.exe
 
@@ -41,6 +41,10 @@ jobs:
     - name: Install musl-tools for static linking
       if: matrix.target == 'x86_64-unknown-linux-musl'
       run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+    - name: Install mingw-w64 for Windows cross-compilation
+      if: matrix.target == 'x86_64-pc-windows-gnu'
+      run: sudo apt-get update && sudo apt-get install -y mingw-w64
 
     - name: Build
       run: |
