@@ -24,9 +24,9 @@ jobs:
             target: x86_64-unknown-linux-musl
             artifact_name: kitty-pane-bg
             asset_name: kitty-pane-bg-linux-x86_64
-          # Windows statically linked with musl-cross (experimental)
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
+          # Windows built normally (MSVC)
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
             artifact_name: kitty-pane-bg.exe
             asset_name: kitty-pane-bg-windows-x86_64.exe
 
@@ -39,11 +39,14 @@ jobs:
         targets: ${{ matrix.target }}
 
     - name: Install musl-tools for static linking
+      if: matrix.target == 'x86_64-unknown-linux-musl'
       run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-    - name: Build (statically linked)
+    - name: Build
       run: |
-        export RUSTFLAGS="-C target-feature=+crt-static"
+        if [ "${{ matrix.target }}" = "x86_64-unknown-linux-musl" ]; then
+          export RUSTFLAGS="-C target-feature=+crt-static"
+        fi
         cargo build --release --target ${{ matrix.target }}
 
     # No test step: only building statically linked musl binaries
